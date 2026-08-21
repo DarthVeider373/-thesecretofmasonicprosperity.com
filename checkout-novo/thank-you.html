@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Obrigado pela compra</title>
+<link href="https://fonts.googleapis.com/css2?family=Karla:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{background:#0a1b3d;color:#f5f7fa;font-family:'Karla',system-ui,sans-serif;
+     display:grid;place-items:center;min-height:100vh;padding:24px;text-align:center}
+.box{max-width:520px}
+h1{font-size:32px;color:#4ade80;margin-bottom:16px;line-height:1.15}
+p{font-size:17px;line-height:1.65;opacity:.92;margin-bottom:14px}
+.mail{color:#4ade80;font-weight:600;word-break:break-all}
+.small{font-size:14px;opacity:.7;margin-top:24px}
+a{color:#4ade80}
+.spinner{width:30px;height:30px;margin:0 auto 20px;border:3px solid rgba(245,247,250,.2);
+         border-top-color:#4ade80;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="box" id="root">
+  <div class="spinner"></div>
+  <p>Confirmando seu pagamento…</p>
+</div>
+
+<script>
+const CONFIG = {
+  // Troque uismsbmzvsgahmaurddf pelo ref do seu NOVO projeto Supabase
+  statusUrl   : 'https://uismsbmzvsgahmaurddf.supabase.co/functions/v1/session-status',
+  checkoutUrl : '/',
+  supportEmail: 'suporte@SEUDOMINIO.com'
+};
+
+const root = document.getElementById('root');
+const sessionId = new URLSearchParams(location.search).get('session_id');
+function render(html){ root.innerHTML = html; }
+
+(async () => {
+  if (!sessionId) {
+    return render(`<h1>Nada por aqui</h1>
+      <p>Nenhuma sessão de checkout encontrada. Se você acabou de pagar, confira seu e-mail.</p>`);
+  }
+  try {
+    const res = await fetch(CONFIG.statusUrl, {
+      method : 'POST',
+      headers: { 'Content-Type':'application/json' },
+      body   : JSON.stringify({ session_id: sessionId })
+    });
+    const data = await res.json();
+
+    if (data.status === 'complete') {
+      if (window.fbq) fbq('track', 'Purchase');
+      return render(`
+        <h1>Pedido confirmado!</h1>
+        <p>Pagamento recebido — obrigado! Já estamos preparando o envio para o endereço que você informou no checkout.</p>
+        <p>Enviamos uma confirmação para <span class="mail">${data.email || 'seu e-mail'}</span>,
+           e você receberá o código de rastreio assim que o pedido for postado.</p>
+        <p class="small">Dúvidas sobre o pedido?
+           Escreva para <a href="mailto:${CONFIG.supportEmail}">${CONFIG.supportEmail}</a>.</p>`);
+    }
+    if (data.status === 'open') {
+      return render(`<h1>Pagamento não concluído</h1>
+        <p>Seu checkout ainda está aberto — nada foi cobrado.</p>
+        <p><a href="${CONFIG.checkoutUrl}">Voltar ao checkout</a></p>`);
+    }
+    render(`<h1>Sessão expirada</h1>
+      <p>Nenhuma cobrança foi feita. <a href="${CONFIG.checkoutUrl}">Começar de novo</a>.</p>`);
+  } catch (e) {
+    render(`<h1>Não deu pra confirmar agora</h1>
+      <p>Se o pagamento foi aprovado, seu pedido está sendo processado do mesmo jeito.</p>
+      <p class="small"><a href="mailto:${CONFIG.supportEmail}">${CONFIG.supportEmail}</a></p>`);
+  }
+})();
+</script>
+</body>
+</html>

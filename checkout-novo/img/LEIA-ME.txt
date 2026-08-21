@@ -1,0 +1,8 @@
+Coloque aqui a imagem do banner com o nome exato:
+
+    banner.png   (recomendado 1200 x 390)
+
+Pode ser .jpg tambem, mas ai troque no index.html:
+    src="img/banner.png"  ->  src="img/banner.jpg"
+
+Enquanto nao tiver a imagem, a pagina mostra um aviso no lugar do banner.

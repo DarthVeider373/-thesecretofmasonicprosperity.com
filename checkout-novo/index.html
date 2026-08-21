@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>Checkout</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Karla:wght@400;600;700&display=swap" rel="stylesheet">
+<script src="https://js.stripe.com/v3/"></script>
+
+<style>
+:root{
+  --navy:#0a1b3d; --accent:#1f9d4d; --orange:#f97316; --bg:#fff3e6; --card:#fff;
+  --ink:#1c2434; --ink-soft:#6b7280; --line:#e4e2dc; --r:10px;
+}
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+img{max-width:100%;height:auto;display:block}
+body{background:var(--bg);font-family:'Karla',system-ui,sans-serif;color:var(--ink);-webkit-font-smoothing:antialiased}
+
+.topbar{background:var(--orange);color:#fff;text-align:center;padding:12px 16px;font-size:15px;font-weight:700;font-variant-numeric:tabular-nums}
+
+.banner{max-width:820px;margin:0 auto;padding:16px 16px 0}
+.ph{width:100%;border:2px dashed var(--ink-soft);border-radius:var(--r);background:#fff;
+    display:grid;place-items:center;color:var(--ink-soft);font-size:13px;font-weight:600;text-align:center;padding:16px;aspect-ratio:820/260}
+
+.wrap{max-width:820px;margin:0 auto;padding:16px}
+
+.checkout-box{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:16px;min-height:420px}
+@media(max-width:640px){.checkout-box{padding:12px}}
+
+.loading{display:grid;place-items:center;min-height:380px;gap:12px;color:var(--ink-soft);font-size:14px}
+.spinner{width:26px;height:26px;border:3px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.alert{display:none;margin:16px;background:#fdecea;border:1px solid #f5c6c2;border-radius:8px;
+       padding:14px 16px;color:#b3261e;font-size:14px;line-height:1.5}
+.alert.show{display:block}
+
+.trust{max-width:520px;margin:16px auto 40px;text-align:center;color:var(--ink-soft);font-size:13px;
+       display:flex;align-items:center;justify-content:center;gap:8px}
+.trust svg{width:15px;height:15px;fill:var(--accent)}
+</style>
+</head>
+<body>
+
+<div class="topbar" id="topbar"></div>
+
+<!-- BANNER: coloque sua imagem em img/banner.png (recomendado 1200×390).
+     Enquanto não colocar, aparece o texto de aviso abaixo. -->
+<div class="banner">
+  <img src="img/Emagrecedores - Shandong - Desktop.webp" alt="Banner do produto"
+       onerror="this.style.display='none';this.nextElementSibling.style.display='grid';">
+  <div class="ph" style="display:none">Coloque sua imagem em <b>img/banner.png</b> (recomendado 1200×390)</div>
+</div>
+
+<div class="wrap">
+  <div class="checkout-box">
+    <div class="loading" id="loading">
+      <div class="spinner"></div>
+      <span>Carregando checkout seguro…</span>
+    </div>
+    <div id="checkout"></div>
+  </div>
+  <div class="alert" id="alert" role="alert"></div>
+</div>
+
+<div class="trust">
+  <svg viewBox="0 0 24 24"><path d="M12 1 3 5v6c0 5.55 3.84 10.74 9 12 5.16-1.26 9-6.45 9-12V5l-9-4zm0 10.99h7c-.53 4.12-3.28 7.79-7 8.94V12H5V6.3l7-3.11v8.8z"/></svg>
+  <span>Pagamento seguro processado pelo Stripe</span>
+</div>
+
+
+<script>
+/* =====================================================================
+   CONFIG — único bloco que você edita no front.
+   A chave publicável (pk_) PODE ficar aqui (é pública por design).
+   A chave SECRETA (sk_) NUNCA entra aqui — só no secret do Supabase.
+   ===================================================================== */
+const CONFIG = {
+  publishableKey: 'pk_live_51U69jjEt4eVK2qhOHs00Tn6TgSvq3LPHBoGwEgJ8ttjrizaE62MZFjOpPeaW0I5UUxacQ4IiPOdVjyTBrENY4x4000cH6Tg24o',
+
+  // Troque uismsbmzvsgahmaurddf pelo ref do seu NOVO projeto Supabase
+  sessionUrl: 'https://uismsbmzvsgahmaurddf.supabase.co/functions/v1/create-checkout-session',
+
+  countdownSeconds: 459,            // 07:39
+  countdownLabel  : 'Oferta por tempo limitado — acaba em',
+  countdownEnded  : 'Oferta ainda disponível — garanta o seu agora'
+};
+
+/* ---------- Contador (por-visitante) ---------- */
+(function(){
+  const bar = document.getElementById('topbar');
+  const KEY = 'ck_deadline_v1';
+  let deadline = Number(localStorage.getItem(KEY));
+  const now = Date.now();
+  if (!deadline || deadline < now || deadline > now + CONFIG.countdownSeconds*1000) {
+    deadline = now + CONFIG.countdownSeconds * 1000;
+    try { localStorage.setItem(KEY, String(deadline)); } catch(e){}
+  }
+  function tick(){
+    const left = Math.max(0, Math.floor((deadline - Date.now())/1000));
+    if (left <= 0){ bar.textContent = CONFIG.countdownEnded; clearInterval(timer); return; }
+    const m = String(Math.floor(left/60)).padStart(2,'0');
+    const s = String(left%60).padStart(2,'0');
+    bar.textContent = `${CONFIG.countdownLabel}  ${m}:${s}`;
+  }
+  tick();
+  const timer = setInterval(tick, 1000);
+})();
+
+/* ---------- Checkout embedado ---------- */
+const $alert = document.getElementById('alert');
+function fail(msg){
+  document.getElementById('loading').style.display = 'none';
+  $alert.textContent = msg;
+  $alert.classList.add('show');
+}
+
+const q = new URLSearchParams(location.search);
+const pick = k => q.get(k) || undefined;
+const stripe = Stripe(CONFIG.publishableKey);
+
+async function fetchClientSecret(){
+  const res = await fetch(CONFIG.sessionUrl, {
+    method : 'POST',
+    headers: { 'Content-Type':'application/json' },
+    body   : JSON.stringify({
+      client_reference_id: pick('vtid') || pick('cid') || pick('click_id') || pick('fbclid'),
+      utm_source  : pick('utm_source'),
+      utm_medium  : pick('utm_medium'),
+      utm_campaign: pick('utm_campaign'),
+      utm_content : pick('utm_content'),
+      utm_term    : pick('utm_term'),
+      fbclid      : pick('fbclid')
+    })
+  });
+  const data = await res.json();
+  if (!res.ok || !data.clientSecret) throw new Error(data.error || 'no_client_secret');
+  return data.clientSecret;
+}
+
+(async () => {
+  try {
+    const checkout = await stripe.initEmbeddedCheckout({ fetchClientSecret });
+    checkout.mount('#checkout');
+    document.getElementById('loading').style.display = 'none';
+    if (window.fbq) fbq('track', 'InitiateCheckout');
+  } catch (err) {
+    console.error(err);
+    fail('Não conseguimos carregar o checkout. Atualize a página ou tente de novo em instantes.');
+  }
+})();
+</script>
+</body>
+</html>

@@ -218,7 +218,8 @@ const CONFIG = {
   const timer = setInterval(tick, 1000);
 })();
 
-document.getElementById('refund').textContent  = CONFIG.refundNote;
+const refundEl = document.getElementById('refund');
+if (refundEl) refundEl.textContent = CONFIG.refundNote;
 
 const $alert = document.getElementById('alert');
 function fail(msg){
